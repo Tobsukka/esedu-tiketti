@@ -21,6 +21,27 @@
   - [x] Käyttäjien hakutoiminto hallintapaneelissa
   - [x] Käyttäjien ryhmätietojen (jobTitle) näyttäminen badgeina hallintapaneelissa ja profiilisivulla
 
+## AI-integraatio
+- [x] PostgreSQL-vektoritietokannan asennus (pgvector)
+  - [x] pgvector-laajennuksen konfigurointi
+  - [x] Vektori-indeksien luominen
+  - [x] Tietokantamallin päivitys vektorikenttien tukemiseksi
+- [x] LangChain-integraatio
+  - [x] OpenAI API -integraatio
+  - [x] Embedding-palvelun toteutus
+  - [x] Vektoritietokannan integraatio
+  - [x] Tikettien automaattinen käsittely
+- [x] Tukihenkilön AI-avustaja
+  - [x] Tikettien analysointi
+  - [x] Samankaltaisten tikettien haku
+  - [x] Vastausehdotusten generointi
+  - [x] Käyttöliittymäkomponentti tukihenkilöille
+- [ ] Kehittyneemmät AI-ominaisuudet
+  - [ ] Tikettien automaattinen kategorisointi
+  - [ ] Tikettien automaattinen priorisointi
+  - [ ] Tikettien automaattinen reititys
+  - [ ] Käyttäjäkohtainen AI-avustaja
+
 ## Frontend
 ### Tikettinäkymät
 - [x] Tiketin luontilomake

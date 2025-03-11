@@ -2,6 +2,20 @@
 
 Kaikki merkittävät muutokset tähän projektiin dokumentoidaan tässä tiedostossa.
 
+# 11.03.2025 (Implemented AI integration with LangChain and pgvector)
+
+- Added AI capabilities to the ticket system using LangChain and LangGraph:
+  - Integrated pgvector extension with PostgreSQL for vector embeddings
+  - Created embedding service for ticket semantic search
+  - Implemented AI support assistant for ticket analysis and response generation
+  - Added automatic ticket processing for embeddings generation
+  - Created frontend component for support staff to interact with AI
+- Technical improvements:
+  - Added vector similarity search for finding similar tickets
+  - Implemented automatic ticket embedding on creation and updates
+  - Created AI API endpoints for frontend integration
+  - Added AI configuration system with environment variables
+
 # 10.03.2025 (Optimized Microsoft Graph API profile picture integration)
 
 - Optimized profile picture fetching to reduce API calls to Microsoft Graph:

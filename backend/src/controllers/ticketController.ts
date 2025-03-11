@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { ticketService } from '../services/ticketService.js';
 import { TypedRequest, CreateTicketDTO, UpdateTicketDTO } from '../types/index.js';
-import { PrismaClient, TicketStatus, Priority, UserRole } from '@prisma/client';
+import { PrismaClient, TicketStatus, Priority, UserRole, Ticket } from '@prisma/client';
 import { createNotification } from './notificationController.js';
+import { afterTicketUpsert, afterTicketDelete } from '../ai/hooks/ticketHooks.js';
 
 const prisma = new PrismaClient();
 
@@ -134,6 +135,18 @@ export const ticketController = {
 
       // Käytetään autentikoidun käyttäjän ID:tä
       const ticket = await ticketService.createTicket(req.body, user.id);
+
+      // Process the ticket for AI features - get the full ticket object first
+      const fullTicket = await prisma.ticket.findUnique({
+        where: { id: ticket.id }
+      });
+      
+      if (fullTicket) {
+        afterTicketUpsert(fullTicket).catch(error => {
+          console.error('Error processing ticket for AI:', error);
+        });
+      }
+
       res.status(201).json({ ticket });
     } catch (error) {
       console.error('Error creating ticket:', error);
@@ -148,6 +161,18 @@ export const ticketController = {
       if (!ticket) {
         return res.status(404).json({ error: 'Ticket not found' });
       }
+
+      // Process the updated ticket for AI features - get the full ticket object first
+      const fullTicket = await prisma.ticket.findUnique({
+        where: { id: ticket.id }
+      });
+      
+      if (fullTicket) {
+        afterTicketUpsert(fullTicket).catch(error => {
+          console.error('Error processing updated ticket for AI:', error);
+        });
+      }
+
       res.json({ ticket });
     } catch (error) {
       console.error('Error updating ticket:', error);
@@ -159,6 +184,12 @@ export const ticketController = {
   deleteTicket: async (req: Request, res: Response) => {
     try {
       await ticketService.deleteTicket(req.params.id);
+
+      // Process the ticket deletion for AI features
+      afterTicketDelete(req.params.id).catch(error => {
+        console.error('Error processing ticket deletion for AI:', error);
+      });
+
       res.status(204).send();
     } catch (error) {
       console.error('Error deleting ticket:', error);

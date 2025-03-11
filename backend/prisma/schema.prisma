@@ -43,9 +43,24 @@ model Ticket {
   comments       Comment[]
   notifications  Notification[]
   attachments    Attachment[]
+  embedding      TicketEmbedding?
   assignedTo     User?          @relation("AssignedTickets", fields: [assignedToId], references: [id])
   category       Category       @relation(fields: [categoryId], references: [id])
   createdBy      User           @relation("CreatedTickets", fields: [createdById], references: [id])
+}
+
+model TicketEmbedding {
+  id        Int      @id @default(autoincrement())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId  String   @unique @map("ticket_id")
+  // IMPORTANT: The vector embedding column is managed outside of Prisma
+  // Column name: "embedding", Type: vector(1536)
+  // The column is created and maintained by the init-pgvector.sql initialization script
+  // DO NOT add or modify this column through Prisma migrations
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("ticket_embeddings")
 }
 
 model Attachment {

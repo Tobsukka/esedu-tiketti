@@ -33,9 +33,11 @@ import {
   ChevronsUpDown,
   Settings,
   X,
+   Sparkles,
 } from 'lucide-react';
 
 import CommentSection from '../Tickets/CommentSection';
+import AIAssistant from './AIAssistant';
 
 const SUPPORT_COLOR = {
   bg: 'bg-[#92C01F]',
@@ -53,6 +55,7 @@ export default function TicketDetailsModal({ ticketId, onClose }) {
   const ticketActionsRef = useRef(null);
   const queryClient = useQueryClient();
   const { userRole, user } = useAuth();
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   const {
     data: ticket,
@@ -705,6 +708,28 @@ export default function TicketDetailsModal({ ticketId, onClose }) {
     );
   };
 
+  const actionMenuItems = [
+    {
+      label: 'AI Assistant',
+      icon: <Sparkles size={16} />,
+      onClick: () => setShowAIAssistant(!showAIAssistant),
+      color: 'blue',
+      show: user?.role === 'SUPPORT' || user?.role === 'ADMIN',
+    },
+  ];
+
+  const renderAIAssistant = () => {
+    if (!showAIAssistant || (user?.role !== 'SUPPORT' && user?.role !== 'ADMIN')) {
+      return null;
+    }
+    
+    return (
+      <div className="mt-6">
+        <AIAssistant ticket={ticketData} />
+      </div>
+    );
+  };
+
   return (
     <div
       id="modal-background"
@@ -838,6 +863,21 @@ export default function TicketDetailsModal({ ticketId, onClose }) {
                             color="gray"
                           />
                         </div>
+                        
+                        {/* Add AI Assistant option for support and admin users */}
+                        {(userRole === 'SUPPORT' || userRole === 'ADMIN') && (
+                          <div className="p-2 space-y-1">
+                            <ActionMenuItem 
+                              onClick={() => {
+                                setShowAIAssistant(!showAIAssistant);
+                                setShowTicketActions(false);
+                              }}
+                              icon={Sparkles}
+                              label={showAIAssistant ? "Piilota AI-avustaja" : "Näytä AI-avustaja"}
+                              color="blue"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1073,6 +1113,13 @@ export default function TicketDetailsModal({ ticketId, onClose }) {
             </div>
 
             <Timeline />
+
+            {/* AI Assistant */}
+            {showAIAssistant && (userRole === 'SUPPORT' || userRole === 'ADMIN') && (
+              <div className="mt-6">
+                <AIAssistant ticket={ticketData} />
+              </div>
+            )}
           </CardContent>
 
           <CardFooter className="flex justify-between items-center p-4 sm:p-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
