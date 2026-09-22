@@ -174,6 +174,7 @@ const ProfileView = () => {
                     >
                       <option value="USER">Opiskelija</option>
                       <option value="SUPPORT">Tukihenkilö</option>
+                      <option value="TEACHER">Opettaja</option>
                       <option value="ADMIN">Admin</option>
                     </select>
                     {isChangingRole && (

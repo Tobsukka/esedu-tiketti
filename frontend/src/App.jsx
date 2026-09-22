@@ -14,10 +14,11 @@ import Layout from './components/Layout/Layout';
 import AITools from './pages/AITools';
 import DiscordSettings from './pages/DiscordSettings';
 import StudentReportView from './pages/StudentReportView';
+import { isStaff } from './utils/roles';
 
 function App() {
   const { userRole } = useAuth();
-  const isSupportOrAdmin = userRole === 'SUPPORT' || userRole === 'ADMIN';
+  const isSupportOrAdmin = isStaff(userRole);
 
   return (
     <Router>
@@ -86,9 +87,9 @@ function App() {
             </AuthGuard>
           } />
 
-          {/* Tekoälytyökalut (vain admin) */}
+          {/* Tekoälytyökalut (opettaja ja admin) */}
           <Route path="/ai-tools" element={
-            <AuthGuard requiredRole="ADMIN">
+            <AuthGuard requiredRole="TEACHER">
               <Layout>
                 <AITools />
               </Layout>

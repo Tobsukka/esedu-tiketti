@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../providers/AuthProvider';
 import { Alert } from '../ui/Alert';
+import { hasRoleLevel, isStaff } from '../../utils/roles';
 
 export default function AuthGuard({ children, requiredRole }) {
   const { user, loading, userRole } = useAuth();
@@ -13,16 +14,14 @@ export default function AuthGuard({ children, requiredRole }) {
     if (!requiredRole) return true;
     if (userRole === 'ADMIN') return true;
 
-    // Jos requiredRole on taulukko, tarkista onko käyttäjän rooli jokin sallituista
+    // Hierarkia: korkeampi rooli riittää aina matalamman vaatimukseen.
+    // Ilman tätä uusi rooli (esim. TEACHER) ei pääsisi tukihenkilön näkymiin.
     if (Array.isArray(requiredRole)) {
-      return requiredRole.includes(userRole);
+      return requiredRole.some((required) => hasRoleLevel(userRole, required));
     }
 
-    // Vanhat tarkistukset string-muotoisille rooleille
-    if (requiredRole === 'ADMIN') return userRole === 'ADMIN';
-    if (requiredRole === 'MANAGEMENT')
-      return userRole === 'ADMIN' || userRole === 'SUPPORT';
-    return userRole === requiredRole;
+    if (requiredRole === 'MANAGEMENT') return isStaff(userRole);
+    return hasRoleLevel(userRole, requiredRole);
   };
 
   useEffect(() => {

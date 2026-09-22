@@ -126,6 +126,9 @@ enum UserRole {
   ADMIN
   USER
   SUPPORT
+  // Opettaja: tukihenkilön oikeudet + AI-työkalut (tikettien generointi,
+  // ratkaisujen ja analytiikan tarkastelu). Ei järjestelmän asetuksia.
+  TEACHER
 }
 
 enum TicketStatus {

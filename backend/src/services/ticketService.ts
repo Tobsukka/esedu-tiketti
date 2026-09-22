@@ -6,6 +6,7 @@ import path from 'path'; // Added for path construction
 import { prisma } from '../lib/prisma.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../middleware/errorHandler.js';
 import { discordChannelCleanup } from '../discord/channelCleanup.js';
+import { isStaff } from '../utils/roles.js';
 
 // Check if Discord is configured
 const isDiscordEnabled = process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_CLIENT_ID;
@@ -599,7 +600,7 @@ export const ticketService = {
     }
 
     // Jos käyttäjä on tukihenkilö tai admin
-    if (user.role === 'SUPPORT' || user.role === 'ADMIN') {
+    if (isStaff(user.role)) {
       // Admin voi aina kommentoida
       if (user.role === 'ADMIN') {
         return await prisma.comment.create({

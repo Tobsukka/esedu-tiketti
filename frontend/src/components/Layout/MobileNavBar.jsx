@@ -13,6 +13,7 @@ import {
   FileText
 } from 'lucide-react';
 import UserManagementDialog from '../Admin/UserManagementDialog';
+import { isStaff, canUseAiTools } from '../../utils/roles';
 
 export default function MobileNavBar() {
   const location = useLocation();
@@ -20,7 +21,7 @@ export default function MobileNavBar() {
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   
   // Check if user has management rights (admin or support)
-  const isSupportOrAdmin = userRole === 'ADMIN' || userRole === 'SUPPORT';
+  const isSupportOrAdmin = isStaff(userRole);
   const isAdmin = userRole === 'ADMIN';
   
   // Skip rendering the navigation if user is not logged in
@@ -101,8 +102,8 @@ export default function MobileNavBar() {
             </Link>
           )}
           
-          {/* AI Tools for Admin only */}
-          {userRole === 'ADMIN' && (
+          {/* AI-työkalut: opettaja ja admin */}
+          {canUseAiTools(userRole) && (
             <Link to="/ai-tools" className={getNavItemClass('/ai-tools')}>
               <div className="relative w-full h-full flex flex-col items-center justify-center">
                 <Sparkles size={24} className={`mb-1 ${isActive('/ai-tools') ? 'text-primary' : 'text-yellow-500'}`} />

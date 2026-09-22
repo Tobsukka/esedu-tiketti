@@ -20,7 +20,9 @@ Erityisenä piirteenä järjestelmä hyödyntää **tekoälyä (AI)** rikastutta
     *   Tiketin vastuuhenkilön määrittäminen.
     *   Arvioidun valmistumisajan asetus prioriteetin mukaan.
 *   **Käyttäjäroolit ja Oikeudet:**
-    *   Kolme roolia: USER (peruskäyttäjä), SUPPORT (tukihenkilö), ADMIN (järjestelmänvalvoja).
+    *   Neljä roolia hierarkiassa: USER (peruskäyttäjä) → SUPPORT (harjoitteleva tukihenkilö) → TEACHER (opettaja) → ADMIN (järjestelmänvalvoja). Korkeampi rooli sisältää alempien oikeudet.
+        *   **TEACHER** lisää tukihenkilön oikeuksiin AI-työkalut: harjoitustikettien generoinnin, ratkaisujen tarkastelun ja AI-analytiikan. Järjestelmän asetukset, roolien hallinta ja massapoisto jäävät ADMIN-roolille.
+        *   Hierarkia on toteutettu `backend/src/utils/roles.ts`- ja `frontend/src/utils/roles.js`-moduuleissa. Käytä niiden apufunktioita (`isStaff`, `canUseAiTools`) yksittäisten roolivertailujen sijaan, jotta uudet roolit eivät unohdu tarkistuksista.
     *   Roolipohjainen pääsynhallinta eri toimintoihin ja näkymiin.
 *   **Kommentointi:**
     *   Käyttäjät ja tukihenkilöt voivat keskustella tiketin sisällä.

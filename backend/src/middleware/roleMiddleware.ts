@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import logger from '../utils/logger.js';
+import { hasRoleLevel, isStaff } from '../utils/roles.js';
 
 // Middleware roolien tarkistamiseen
 export const requireRole = (requiredRoles: UserRole | UserRole[]) => {
@@ -22,13 +23,12 @@ export const requireRole = (requiredRoles: UserRole | UserRole[]) => {
         return res.status(403).json({ error: 'Käyttäjää ei löydy' });
       }
 
-      // Admin has access to everything
-      if (user.role === UserRole.ADMIN) {
-        return next();
-      }
+      // Hierarkia: korkeampi rooli sisältää alempien oikeudet, joten
+      // esim. requireRole(SUPPORT) läpäisee myös TEACHER- ja ADMIN-roolit.
+      // Ilman tätä jokainen uusi rooli pitäisi lisätä käsin jokaiseen reittiin.
+      const allowed = roles.some((required) => hasRoleLevel(user.role, required));
 
-      // Check if user's role is in the required roles
-      if (!roles.includes(user.role)) {
+      if (!allowed) {
         return res.status(403).json({ error: 'Ei käyttöoikeutta' });
       }
 
@@ -64,8 +64,8 @@ export const requireOwnership = async (
       return res.status(403).json({ error: 'Käyttäjää ei löydy' });
     }
 
-    // Jos käyttäjä on admin tai tukihenkilö, sallitaan pääsy
-    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPPORT) {
+    // Tukihenkilötason roolit pääsevät käsiksi kaikkiin tiketteihin
+    if (isStaff(user.role)) {
       return next();
     }
 

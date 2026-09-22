@@ -8,6 +8,7 @@ import { Loader2, AlertCircle, Table, List, MessageSquare, Calendar, User, Tag, 
 import { debounce } from 'lodash'; // Import debounce
 import FilterDialog from './FilterDialog'; // Import the new dialog
 import PaginationControls from './PaginationControls'; // Import pagination controls
+import { isStaff } from '../../utils/roles';
 
 // Helper component for displaying a single statistic
 const StatCard = ({ title, value, icon }) => (
@@ -34,7 +35,7 @@ const AiTicketAnalysis = ({ onViewConversation, onOpenTicketDetails }) => {
   
   // Keep state for filter options
   const categories = categoriesData?.categories || categoriesData?.data || [];
-  const supportUsers = (usersData || []).filter(user => user.role === 'SUPPORT' || user.role === 'ADMIN');
+  const supportUsers = (usersData || []).filter(user => isStaff(user.role));
   const [statuses] = useState(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']);
 
   // Consolidated state for applied filters

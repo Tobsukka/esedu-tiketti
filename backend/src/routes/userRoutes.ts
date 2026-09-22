@@ -5,6 +5,7 @@ import { requireRole } from '../middleware/roleMiddleware.js';
 import { prisma } from '../lib/prisma.js';
 import { getProfilePicture, getProfilePictureByEmail, updateProfilePictureFromMicrosoft } from '../controllers/userController.js';
 import { asyncHandler, AuthenticationError, NotFoundError, ValidationError, AuthorizationError } from '../middleware/errorHandler.js';
+import { STAFF_ROLES } from '../utils/roles.js';
 
 const router = express.Router();
 
@@ -149,12 +150,9 @@ router.get('/support', authMiddleware, requireRole([UserRole.SUPPORT, UserRole.A
     const users = await prisma.user.findMany({
       where: {
         AND: [
-          {
-            OR: [
-              { role: UserRole.SUPPORT },
-              { role: UserRole.ADMIN }
-            ]
-          },
+          // Kaikki tukihenkilötason roolit, myös TEACHER, jotta tiketin voi
+          // osoittaa opettajalle ja hän näkyy tukihenkilölistoissa
+          { role: { in: STAFF_ROLES } },
           { isDiscordUser: false } // Exclude Discord users
         ]
       },

@@ -6,6 +6,7 @@ import { useUsers } from '../../hooks/useUsers';
 import { useCategories } from '../../hooks/useCategories';
 import { useAISettings } from '../../hooks/useAISettings';
 import TicketDetailsModal from '../Tickets/TicketDetailsModal';
+import { isStaff } from '../../utils/roles';
 import { 
   Sparkles, 
   Cpu, 
@@ -63,7 +64,7 @@ const AITicketGenerator = () => {
   const [userProfileOptions, setUserProfileOptions] = useState([]);
   
   // Derive support users from allUsers
-  const supportUsers = allUsers?.filter(u => u.role === 'SUPPORT' || u.role === 'ADMIN') || [];
+  const supportUsers = allUsers?.filter(u => isStaff(u.role)) || [];
   
   // UI state
   const [isLoading, setIsLoading] = useState(false);

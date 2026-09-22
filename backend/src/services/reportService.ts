@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { TicketStatus, UserRole } from '@prisma/client';
 import logger from '../utils/logger.js';
+import { isStaff } from '../utils/roles.js';
 
 export interface ReportFilters {
   startDate?: Date;
@@ -69,7 +70,7 @@ export const reportService = {
       }
 
       // Check if user is SUPPORT role
-      if (user.role !== UserRole.SUPPORT && user.role !== UserRole.ADMIN) {
+      if (!isStaff(user.role)) {
         throw new Error('Only support staff can generate work reports');
       }
 

@@ -4,37 +4,39 @@ import { aiSettingsController } from '../controllers/aiSettingsController.js';
 import { requireRole } from '../middleware/roleMiddleware.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { UserRole } from '@prisma/client';
+import { AI_TOOL_ROLES } from '../utils/roles.js';
 
 const router = express.Router();
 
 // First apply the auth middleware to parse the JWT token
 router.use(authMiddleware);
 
-// Only admins and support staff can access AI features
-router.use(requireRole([UserRole.ADMIN, UserRole.SUPPORT]));
+// Perustaso: tukihenkilö ja sitä ylemmät roolit. Yksittäiset reitit
+// kiristävät tätä alempana (AI_TOOL_ROLES = TEACHER+ADMIN, asetukset ADMIN).
+router.use(requireRole([UserRole.SUPPORT]));
 
 // Check OpenAI configuration status
-// Käytetään vain AITools-sivulla, joka on admin-rajattu.
-router.get('/config-status', requireRole([UserRole.ADMIN]), aiController.checkConfiguration);
+// Vain AI-työkaluihin oikeutetut roolit (TEACHER, ADMIN).
+router.get('/config-status', requireRole(AI_TOOL_ROLES), aiController.checkConfiguration);
 
 // Get AI agent configuration (categories, complexity etc.)
-// Käytetään vain tikettigeneraattorissa, joka on admin-rajattu.
-router.get('/config', requireRole([UserRole.ADMIN]), aiController.getAgentConfig);
+// Vain AI-työkaluihin oikeutetut roolit (TEACHER, ADMIN).
+router.get('/config', requireRole(AI_TOOL_ROLES), aiController.getAgentConfig);
 
 // Generate training ticket preview (does not save)
-// HUOM: vain ADMIN. Tässä järjestelmässä SUPPORT-rooli tarkoittaa harjoittelevaa
-// opiskelijaa, joten hänen ei pidä pystyä luomaan itselleen harjoitustikettejä.
-// Esikatselu palauttaa myös ratkaisun.
+// HUOM: SUPPORT ei kelpaa. Tässä järjestelmässä SUPPORT tarkoittaa
+// harjoittelevaa opiskelijaa, joten hänen ei pidä pystyä luomaan itselleen
+// harjoitustikettejä - esikatselu palauttaa myös ratkaisun.
 router.post(
   '/generate-ticket-preview',
-  requireRole([UserRole.ADMIN]),
+  requireRole(AI_TOOL_ROLES),
   aiController.generateTrainingTicketPreview
 );
 
 // Confirm and create the training ticket after preview
 router.post(
   '/confirm-ticket-creation',
-  requireRole([UserRole.ADMIN]),
+  requireRole(AI_TOOL_ROLES),
   aiController.confirmTrainingTicketCreation
 );
 
@@ -42,12 +44,12 @@ router.post(
 router.post('/tickets/:id/generate-response', aiController.generateUserResponse);
 
 // Get the solution for an AI-generated ticket
-// HUOM: vain ADMIN. Tämä palauttaa tiketin piilotetun ratkaisun, jonka
+// HUOM: SUPPORT ei kelpaa. Tämä palauttaa tiketin piilotetun ratkaisun, jonka
 // opiskelijan on tarkoitus selvittää itse. Aiemmin reitti oli avoinna myös
-// SUPPORT-roolille eli harjoitteleville opiskelijoille.
+// SUPPORT-roolille eli harjoitteleville opiskelijoille (ks. issue #29).
 router.get(
   '/tickets/:ticketId/solution',
-  requireRole([UserRole.ADMIN]),
+  requireRole(AI_TOOL_ROLES),
   aiController.getTicketSolution
 );
 
@@ -69,13 +71,13 @@ router.delete('/tickets/:ticketId/support-assistant/history/:supportUserId', aiC
 // --- New Analysis Routes ---
 router.get(
   '/analysis/tickets',
-  requireRole([UserRole.ADMIN]),
+  requireRole(AI_TOOL_ROLES),
   aiController.getAiAnalysisTickets
 );
 
 router.get(
   '/analysis/tickets/:ticketId/conversation',
-  requireRole([UserRole.ADMIN]),
+  requireRole(AI_TOOL_ROLES),
   aiController.getAiTicketConversation
 );
 // --- End New Analysis Routes ---
