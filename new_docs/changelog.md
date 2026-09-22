@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-09-22 - Ensimmäiset automaattitestit
+
+### Added
+- **Jest-testiympäristö backendille**: ESM + TypeScript -konfiguraatio (`jest.config.js`), `npm test` ja `npm run test:watch`
+- **48 testiä kolmessa tiedostossa** (`backend/src/__tests__`):
+  - `azureTokenVerifier.test.ts` - tokenin tarkistuksen hyökkäystestit mockatulla JWKS:llä
+  - `roles.test.ts` - roolihierarkian oikeusmatriisi
+  - `ticketTopics.test.ts` - aihearvonta, toiston esto ja varapolut
+
+### Technical Changes
+- Testit suljettu pois tuotantokäännöksestä (`tsconfig.json` -> `exclude`), joten ne eivät päädy Docker-imageen
+- Testien laatu varmistettu mutaatiotestauksella: algoritmirajauksen, audience-tarkistuksen ja issuer-tarkistuksen poisto kaatavat kukin vastaavan testin
+- Lisätty erillinen PS256-testi, koska HS256-algoritmisekaannuksen torjuu jo jsonwebtoken itse - oma `algorithms`-rajaus tarvitsi oman testinsä
+
 ## 2026-09-16 - Todennuksen korjaus (kriittinen)
 
 ### Security

@@ -78,6 +78,26 @@ npm run db:reset
 *   Ajaa kaikki migraatiot.
 *   Ajaa seed-skriptin (`prisma/seed.ts`).
 
+## Testit
+
+Testit ajetaan Jestillä (`npm test` backend-kansiossa). Projekti käyttää ES-moduuleja, joten Jest tarvitsee ESM-tilan — `test`-skripti asettaa `NODE_OPTIONS=--experimental-vm-modules` ja `jest.config.js` käyttää ts-jestin ESM-presettiä.
+
+```bash
+cd backend
+npm test           # kaikki testit
+npm run test:watch # seurantatila kehityksen aikana
+```
+
+Testit sijaitsevat hakemistossa `src/__tests__` ja ne on suljettu pois tuotantokäännöksestä (`tsconfig.json` → `exclude`), joten ne eivät päädy Docker-imageen.
+
+Ensimmäinen testierä kattaa kolme aluetta:
+
+*   **`azureTokenVerifier.test.ts`** — tokenin tarkistuksen hyökkäystestit: algoritmisekaannus, sallitun listan ulkopuolinen algoritmi, `alg: none`, vieras allekirjoitusavain, vanhentunut token, väärä audience, väärä issuer, puuttuva `kid`, Graph-token ja roskadata. JWKS on mockattu, joten testit eivät tarvitse verkkoa.
+*   **`roles.test.ts`** — roolihierarkian oikeusmatriisi kaikille neljälle roolille. Varmistaa erityisesti, ettei SUPPORT (harjoitteleva opiskelija) pääse AI-työkaluihin.
+*   **`ticketTopics.test.ts`** — aihearvonta: vaikeustason suodatus, toiston esto, varapolut ja se ettei katalogi ole painottunut yhteen aihepiiriin.
+
+Testien laatu on varmistettu mutaatiotestauksella: kun verifioijasta poistetaan algoritmirajaus, audience-tarkistus tai issuer-tarkistus yksi kerrallaan, vastaava testi kaatuu joka kerta.
+
 ## Tuotantoon Vienti (Backend)
 
 > **Huom:** tuotantojulkaisun koko prosessi, `deploy.sh`-skriptin valitsimet, rollback, ympäristömuuttujat, nginx-konfiguraatio ja tunnetut sudenkuopat on kuvattu erillisessä dokumentissa [deployment.md](./deployment.md). Alla oleva kuvaa vain backendin kääntämisen ja käynnistämisen.
