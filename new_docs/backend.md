@@ -80,6 +80,8 @@ npm run db:reset
 
 ## Tuotantoon Vienti (Backend)
 
+> **Huom:** tuotantojulkaisun koko prosessi, `deploy.sh`-skriptin valitsimet, rollback, ympäristömuuttujat, nginx-konfiguraatio ja tunnetut sudenkuopat on kuvattu erillisessä dokumentissa [deployment.md](./deployment.md). Alla oleva kuvaa vain backendin kääntämisen ja käynnistämisen.
+
 1.  **Build:** Käännä TypeScript JavaScriptiksi:
     ```bash
     cd backend
@@ -91,11 +93,11 @@ npm run db:reset
     npm start
     ```
     *   Tämä komento ajaa automaattisesti `prisma generate` ja `prisma migrate deploy` ennen palvelimen käynnistämistä.
-    *   Varmista, että tuotantoympäristön `.env`-tiedosto on oikein konfiguroitu (erityisesti `DATABASE_URL`, `JWT_SECRET`, `AZURE_AD_*` ja `ENVIRONMENT=production`).
+    *   Varmista, että tuotantoympäristön `.env`-tiedosto on oikein konfiguroitu (erityisesti `DATABASE_URL`, `JWT_SECRET`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` ja `NODE_ENV=production`). Huomaa, että ympäristön tunnistus tapahtuu `NODE_ENV`-muuttujalla — aiemmin käytössä ollut `ENVIRONMENT` ei ohjaa enää mitään.
 
 ## Azure AD -autentikointi (ID/Access tokenien validointi)
 
-Backend tukee sekä paikallisia JWT:itä (HS256) että Azure AD:n allekirjoittamia RS*-tokeneita. Azure-tokeneissa on kaksi keskeistä versiota, jotka vaikuttavat issuereihin ja allekirjoitusavaimiin (JWKS):
+Backend hyväksyy vain Azure AD:n allekirjoittamia RS*-tokeneita. Paikallisten HS256-tokenien tuki on poistettu: symmetrisen algoritmin salliminen avaisi algoritmisekaannuksen, jossa hyökkääjä allekirjoittaa tokenin julkisella avaimella. Azure-tokeneissa on kaksi keskeistä versiota, jotka vaikuttavat issuereihin ja allekirjoitusavaimiin (JWKS):
 
 - Issuer v2: `https://login.microsoftonline.com/{tenant}/v2.0`
 - Issuer v1: `https://sts.windows.net/{tenant}/`

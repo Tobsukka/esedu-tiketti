@@ -309,12 +309,8 @@ Projektin päärakenne:
 │   │       ├── apiResponse.ts     # API vastausten standardointi
 │   │       └── logger.ts          # Winston logger
 │   └── tsconfig.json  # TypeScript-kääntäjän asetukset
-├── docs/              # Vanha dokumentaatiohakemisto
-│   ├── ai-agents/     # Vanhat AI-agenttidokumentit
-│   ├── ai-docs-1.md
-│   ├── CHANGELOG.md
-│   ├── docs.md        # Vanha päädokumentti (Tämä toimi tyylioppaana)
-│   └── TODO.md
+├── deploy/            # Julkaisuun liittyvät konfiguraatiot
+│   └── nginx/         # Tuotannon nginx-konfiguraatio
 ├── frontend/          # Frontend-sovellus (React, Vite)
 │   ├── .env           # Ympäristömuuttujat (ei versionhallinnassa)
 │   ├── index.html     # HTML-pääsivu
