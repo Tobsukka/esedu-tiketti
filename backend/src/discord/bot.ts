@@ -42,7 +42,7 @@ class DiscordBot {
   }
 
   private setupEventHandlers() {
-    this.client.once('ready', async () => {
+    this.client.once('clientReady', async () => {
       logger.info(`Discord bot logged in as ${this.client.user?.tag}`);
       this.isReady = true;
       this.registerCommands();
