@@ -1,14 +1,26 @@
-version: '3.8'
 services:
   postgres:
-    image: postgres:16
+    # Kiinnitetty tarkkaan versioon JA pohjadistroon tarkoituksella.
+    # Liukuva tagi "postgres:16" vaihtoi pohjan Debian 12:sta 13:een, jolloin
+    # glibc vaihtui 2.36 -> 2.41. Tietokannan lajittelusäännöt (collation)
+    # tallennetaan luontihetken glibc-version mukaan, joten muutos aiheutti
+    # varoituksen "collation version mismatch" ja vaati indeksien uudelleen-
+    # rakentamisen (REINDEX DATABASE).
+    #
+    # Version päivitys tehdään tietoisesti. Jos pohjadistro vaihtuu, aja
+    # päivityksen jälkeen:
+    #   REINDEX DATABASE esedu_tiketti_db;
+    #   ALTER DATABASE esedu_tiketti_db REFRESH COLLATION VERSION;
+    image: postgres:16.15-trixie
     container_name: esedu-tiketti-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5434:5432"
+      # Vain paikallinen yhteys. Etäyhteys tietokantaan SSH-tunnelilla:
+      # ssh -L 5434:127.0.0.1:5434 it-admin@tiketti.esedu.fi
+      - "127.0.0.1:5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +34,8 @@ services:
     build: .
     container_name: esedu-tiketti-backend
     ports:
-      - "3001:3001"
+      # Vain paikallinen yhteys - ulkoinen liikenne tulee nginxin kautta
+      - "127.0.0.1:3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -31,9 +44,18 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       BACKEND_URL: http://backend:3001
-    command: sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/index.js"
+    # HUOM: seed-skriptiä EI ajeta täällä. prisma/seed.ts luo demotiketit
+    # create-kutsulla, joten se monistaisi ne joka käynnistyksellä.
+    # Tietokannan alustus kehityksessä: npm run db:seed
+    command: sh -c "npx prisma migrate deploy && node dist/index.js"
     volumes:
       - ./uploads:/usr/src/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
 volumes:

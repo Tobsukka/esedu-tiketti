@@ -48,6 +48,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 // Add keyframe animations
 import { keyframes, css } from '@emotion/react';
 import { Global } from '@emotion/react';
+import { isStaff } from '../../utils/roles';
 
 // Custom animation styles
 const fadeIn = keyframes`
@@ -223,7 +224,7 @@ export default function TicketDetailsModal({ ticketId, onClose }) {
 
   // Only fetch users if the current user has permission (SUPPORT or ADMIN)
   // This prevents 403 errors for regular users
-  const isSupportOrAdminUser = userRole === 'SUPPORT' || userRole === 'ADMIN';
+  const isSupportOrAdminUser = isStaff(userRole);
   const { data: allUsers } = useUsers(); // This hook internally checks permissions
   
   // Calculate support users - must be before any conditional returns
@@ -233,7 +234,7 @@ export default function TicketDetailsModal({ ticketId, onClose }) {
     if (!isSupportOrAdminUser || !allUsers || !ticketDataForUsers) return [];
     // Näytetään kaikki tukihenkilöt paitsi tiketin nykyinen käsittelijä
     return allUsers.filter(u => 
-      (u.role === 'SUPPORT' || u.role === 'ADMIN') && 
+      isStaff(u.role) && 
       u.id !== ticketDataForUsers?.assignedToId
     );
   }, [isSupportOrAdminUser, allUsers, ticketDataForUsers]);
@@ -591,7 +592,7 @@ export default function TicketDetailsModal({ ticketId, onClose }) {
   const timeLeft = calculateTimeLeft(ticketData.estimatedCompletionTime);
   const category = ticketData?.category?.name || 'Ei määritelty';
 
-  const isSupportOrAdmin = userRole === 'SUPPORT' || userRole === 'ADMIN';
+  const isSupportOrAdmin = isStaff(userRole);
   const isAssignedToUser = ticketData?.assignedToId === user?.id;
   const canModifyTicket = isSupportOrAdmin && (isAssignedToUser || userRole === 'ADMIN');
   const canUseAssistant = isSupportOrAdmin && isAssignedToUser && ticketData?.status === 'IN_PROGRESS';

@@ -7,6 +7,7 @@ import { useAuth } from '../../providers/AuthProvider';
 import { useSocket } from '../../hooks/useSocket';
 import { Avatar, AvatarFallback, Badge } from '../ui/Avatar';
 import ProfilePicture from '../User/ProfilePicture';
+import { isStaff } from '../../utils/roles';
 
 // Lisätään mukautettu värimääritys
 const SUPPORT_COLOR = {
@@ -151,7 +152,7 @@ export default function CommentSection({
   }, [ticket?.id, subscribe]);
 
   useEffect(() => {
-    if (userRole === 'SUPPORT' || userRole === 'ADMIN') {
+    if (isStaff(userRole)) {
       const hasMedia = comments.some(comment => 
         comment.author?.id === user?.id && 
         comment.mediaUrl && 
@@ -170,7 +171,7 @@ export default function CommentSection({
       return true;
     }
 
-    if (userRole === 'SUPPORT' || userRole === 'ADMIN') {
+    if (isStaff(userRole)) {
       return (
         userRole === 'ADMIN' ||
         (ticket.status === 'IN_PROGRESS' && ticket.assignedToId === user?.id)
@@ -181,7 +182,7 @@ export default function CommentSection({
   };
 
   const shouldUseMediaResponse = () => {
-    return (userRole === 'SUPPORT' || userRole === 'ADMIN') &&
+    return isStaff(userRole) &&
            (ticket.responseFormat === 'KUVA' || ticket.responseFormat === 'VIDEO') &&
            ticket.assignedToId === user?.id;
   };
@@ -196,7 +197,7 @@ export default function CommentSection({
       return ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED';
     }
     
-    return (userRole === 'SUPPORT' || userRole === 'ADMIN') && canComment();
+    return isStaff(userRole) && canComment();
   };
 
   const canAddTextComment = () => {
@@ -215,7 +216,7 @@ export default function CommentSection({
     if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') {
       return 'Tiketti on ratkaistu tai suljettu - kommentointi ei ole mahdollista';
     }
-    if ((userRole === 'SUPPORT' || userRole === 'ADMIN') && 
+    if (isStaff(userRole) && 
         ticket.status === 'OPEN' && 
         userRole !== 'ADMIN') {
       return 'Ota tiketti ensin käsittelyyn kommentoidaksesi';

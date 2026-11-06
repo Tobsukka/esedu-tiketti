@@ -3,11 +3,12 @@ import axios from 'axios';
 import { authService } from '../services/authService';
 import { useAuth } from '../providers/AuthProvider';
 import toast from 'react-hot-toast';
+import { isStaff } from '../utils/roles';
 
 // Hook for fetching ticket conversation
 export const useTicketConversation = (ticketId) => {
   const { userRole } = useAuth();
-  const canAccessConversations = userRole === 'ADMIN' || userRole === 'SUPPORT';
+  const canAccessConversations = isStaff(userRole);
 
   return useQuery({
     queryKey: ['conversation', ticketId],

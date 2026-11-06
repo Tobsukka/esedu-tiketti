@@ -12,6 +12,7 @@ import ProfilePicture from '../User/ProfilePicture';
 import { motion, AnimatePresence } from 'framer-motion';
 // Import placeholder for logo - this will need to be replaced with the actual logo file
 import logoPlaceholder from '../../assets/logo.png';
+import { isStaff, canUseAiTools, getRoleText } from '../../utils/roles';
 
 export default function Header() {
   const { user, userRole } = useAuth();
@@ -21,7 +22,7 @@ export default function Header() {
   const navigate = useNavigate();
 
   // Tarkistaa onko käyttäjällä hallintaoikeudet (admin tai tukihenkilö)
-  const isSupportOrAdmin = userRole === 'ADMIN' || userRole === 'SUPPORT';
+  const isSupportOrAdmin = isStaff(userRole);
 
   const handleRoleChange = async (newRole) => {
     try {
@@ -46,23 +47,14 @@ export default function Header() {
     }
   };
 
-  const getRoleText = (role) => {
-    switch (role) {
-      case 'ADMIN':
-        return 'Admin';
-      case 'SUPPORT':
-        return 'Tukihenkilö';
-      case 'USER':
-        return 'Opiskelija';
-      default:
-        return 'Opiskelija';
-    }
-  };
+  // Roolien näyttönimet tulevat jaetusta utils/roles-moduulista
 
   const getRoleBadgeClass = (role) => {
     switch (role) {
       case 'ADMIN':
         return 'bg-purple-100 text-purple-800';
+      case 'TEACHER':
+        return 'bg-emerald-100 text-emerald-800';
       case 'SUPPORT':
         return 'bg-blue-100 text-blue-800';
       default:
@@ -122,7 +114,7 @@ export default function Header() {
                   </Link>
                 )}
                 
-                {userRole === 'ADMIN' && (
+                {canUseAiTools(userRole) && (
                   <>
                     <Link
                       to="/ai-tools"

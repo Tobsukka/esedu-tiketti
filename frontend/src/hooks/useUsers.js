@@ -2,11 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { authService } from '../services/authService';
 import { useAuth } from '../providers/AuthProvider';
+import { isStaff } from '../utils/roles';
 
 // Helper hook to check if user can access users list
 export const useCanAccessUsers = () => {
   const { userRole } = useAuth();
-  return userRole === 'ADMIN' || userRole === 'SUPPORT';
+  return isStaff(userRole);
 };
 
 // Centralized hook for users list

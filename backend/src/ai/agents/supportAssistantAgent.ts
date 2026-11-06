@@ -7,6 +7,7 @@ import { aiSettingsService } from '../../services/aiSettingsService.js';
 import { createTokenCallback } from '../../utils/tokenCallbackHandler.js';
 import { PrismaClient } from '@prisma/client';
 import { performance } from 'perf_hooks';
+import { isStaff } from '../../utils/roles.js';
 
 // Create Prisma client
 
@@ -129,7 +130,7 @@ export class SupportAssistantAgent {
         logger.info(`\n--- CUSTOMER-SUPPORT CONVERSATION ---`);
         comments.forEach((comment, index) => {
           const userName = comment.author?.name || 'Unknown User';
-          const role = comment.author?.role === 'SUPPORT' || comment.author?.role === 'ADMIN' ? 'Support' : 'Customer';
+          const role = isStaff(comment.author?.role) ? 'Support' : 'Customer';
           logger.info(`[${comment.createdAt.toLocaleString('fi-FI')}] ${role} (${userName}): ${comment.text}`);
         });
         logger.info(`--- END CUSTOMER-SUPPORT CONVERSATION ---\n`);
@@ -179,7 +180,7 @@ export class SupportAssistantAgent {
       // Format conversation history for the prompt
       const conversationHistory = comments.map(comment => {
         const userName = comment.author?.name || 'Unknown User';
-        const isSupport = comment.author?.role === 'SUPPORT' || comment.author?.role === 'ADMIN';
+        const isSupport = isStaff(comment.author?.role);
         const role = isSupport ? "Tukihenkilö" : "Käyttäjä";
         
         return `[${comment.createdAt.toLocaleString('fi-FI')}] ${role} (${userName}): ${comment.text}`;
@@ -422,7 +423,7 @@ export class SupportAssistantAgent {
       // Format conversation history
       const conversationHistory = comments.map((comment, index) => {
         const userName = comment.author?.name || 'Unknown User';
-        const role = comment.author?.role === 'SUPPORT' || comment.author?.role === 'ADMIN' ? 'Support' : 'Customer';
+        const role = isStaff(comment.author?.role) ? 'Support' : 'Customer';
         return `[${comment.createdAt.toLocaleString('fi-FI')}] ${role} (${userName}): ${comment.text}`;
       }).join('\n\n');
       

@@ -1,5 +1,70 @@
 # Changelog
 
+## 2026-09-22 - Ensimmäiset automaattitestit
+
+### Added
+- **Jest-testiympäristö backendille**: ESM + TypeScript -konfiguraatio (`jest.config.js`), `npm test` ja `npm run test:watch`
+- **48 testiä kolmessa tiedostossa** (`backend/src/__tests__`):
+  - `azureTokenVerifier.test.ts` - tokenin tarkistuksen hyökkäystestit mockatulla JWKS:llä
+  - `roles.test.ts` - roolihierarkian oikeusmatriisi
+  - `ticketTopics.test.ts` - aihearvonta, toiston esto ja varapolut
+
+### Technical Changes
+- Testit suljettu pois tuotantokäännöksestä (`tsconfig.json` -> `exclude`), joten ne eivät päädy Docker-imageen
+- Testien laatu varmistettu mutaatiotestauksella: algoritmirajauksen, audience-tarkistuksen ja issuer-tarkistuksen poisto kaatavat kukin vastaavan testin
+- Lisätty erillinen PS256-testi, koska HS256-algoritmisekaannuksen torjuu jo jsonwebtoken itse - oma `algorithms`-rajaus tarvitsi oman testinsä
+
+## 2026-09-16 - Todennuksen korjaus (kriittinen)
+
+### Security
+- **Tokenin allekirjoitusta ei tarkistettu lainkaan.** `authMiddleware` käytti `jwt.decode`-kutsua eikä `jwt.verify`-kutsua (commit `07efc46` poisti JWKS-tarkistuksen 3.9.2025). Koska `roleMiddleware` hakee roolin pelkän sähköpostin perusteella, kuka tahansa pystyi luomaan itse tokenin pääkäyttäjän sähköpostilla ja saamaan täydet oikeudet.
+- **`optionalAuthMiddleware` asetti `req.user`-kentän tarkistamattomasta tokenista** ennen reittikohtaista todennusta. Tunniste siirretty kenttään `req.rateLimitIdentity`, jota käytetään vain rate limit -avaimena.
+- **`POST /api/auth/login` oli täysin avoin** ja loi käyttäjätilin request bodyn perusteella. Reitti vaatii nyt tarkistetun tokenin, ja sähköposti ja nimi luetaan tokenista.
+- **WebSocket-yhteydet hyväksyttiin tarkistamattomalla tokenilla** (`socketService`). Nyt sama tarkistus kuin HTTP-pyynnöissä.
+
+### Juurisyy alkuperäiseen ongelmaan
+- Tarkistus poistettiin, koska tuotannossa tuli "invalid signature" -virheitä. Syy oli siinä, että frontend lähetti Microsoft Graphille tarkoitetun access tokenin (`aud` = Graph, `iss` = `sts.windows.net`). Microsoft muokkaa Graph-tokenin allekirjoitusta tarkoituksella, joten mikään JWKS-fallback ei voinut auttaa.
+- Frontend vaihdettiin ID-tokeniin commitissa `f1442e9` klo 11:10, mutta tarkistus revertoitiin silti klo 12:32 samana päivänä. Jäljelle jäänyt epäilys on puuttuva tai väärä `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` tuotannon `.env`-tiedostossa – sama commit poisti ne myös `.env.example`-tiedostosta.
+
+### Added
+- `src/middleware/azureTokenVerifier.ts`: keskitetty tokenin tarkistus, jota käyttävät sekä HTTP että WebSocket
+  - JWKS v1/v2 -valinta issuerin perusteella ja fallback vain allekirjoitusvirheellä
+  - Graph-tokenin tunnistus omalla virhekoodilla ja ohjeella
+  - Virhekoodit, joista näkee suoraan mikä claim ei täsmää
+- `AUTH_VERIFY_MODE=warn`: käyttöönoton diagnostiikkatila, joka lokittaa epäonnistumisen syyn hylkäämättä pyyntöä
+- Käynnistysloki kertoo odotetun audiencen ja issuerit sekä varoittaa, jos konfiguraatio puuttuu
+
+### Removed
+- `DEVELOPER_EMAILS`-ohitus, joka salli tokenin hyväksymisen ilman allekirjoituksen tarkistusta sähköpostilistan perusteella
+
+### Technical Changes
+- Azure-asetukset luetaan `config/env.js`-moduulin kautta, koska moduulitason `process.env`-luku tapahtuisi ennen `dotenv.config()`-kutsua
+- JWKS-clientit luodaan vasta ensimmäisellä käytöllä
+- `.env.example`: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` ja `AUTH_VERIFY_MODE` dokumentoitu
+
+## 2026-09-16 - Tikettien aihevaihtelu
+
+### Fixed
+- **AI-generoitujen tikettien yksipuolisuus**: generoidut tiketit käsittelivät aina samaa aihetta (ensin tulostimet, sitten wifi)
+  - Syy 1: koodi ei valinnut aihetta lainkaan, vaan jätti sen kielimallille. Koska jokainen generointi on erillinen kutsu, malli ei voinut muistaa aiempia tikettejä ja päätyi joka kerta "tyypillisimpään" ongelmaan.
+  - Syy 2: `ModernTicketGeneratorAgent`-promptin esimerkit ohjasivat verkko-ongelmiin ("netti ei toimi", "WiFi", "verkko", "yhteys") ja kielletyt termit olivat pelkkiä verkkotermejä.
+  - Aihe arvotaan nyt koodissa ennen LLM-kutsua ja annetaan promptille valmiina.
+  - Viimeisten 15 tiketin aiheet jätetään arvonnan ulkopuolelle.
+
+### Added
+- Aihekatalogi `ai/config/ticketTopics.ts`: 48 skenaariota (kirjautuminen, Microsoft 365, tulostus, verkko, laitteet, käyttöjärjestelmä, tiedostot, tietoturva, luokkatilat)
+  - Jokaisella aiheella tarkennus, sopivat kategoriat ja vaikeustasot
+  - Myös laite ja tilannekonteksti arvotaan, mikä tuo vaihtelua saman aiheen sisälle
+- `ai/config/recentTopics.ts`: toiston esto, jota molemmat generaattorit käyttävät
+
+### Technical Changes
+- Aihe, laite ja tilanne lisätty sekä `ModernTicketGeneratorAgent`-promptiin että vanhan generaattorin `TICKET_GENERATOR_PROMPT`-templateen
+- Poistettu verkkoaiheiset esimerkit promptin teknisen tason ohjeista
+- `generatorMetadata` sisältää nyt kentät `topicId`, `topicName` ja `situation`
+- Vanha generaattori tallentaa metadatan (aiemmin `undefined`), jotta toiston esto toimii myös sillä
+- `aiController` tallentaa metadatan molemmilta generaattoriversioilta, ei vain modernilta
+- Generaattorille voi antaa `topicId`-parametrin, jos halutaan ohittaa satunnainen arvonta
+
 ## 2025-09-16 - Discord Broadcast Feature
 ### Added
 - **Discord Broadcast Notifications**: New feature to notify support agents about ticket creation

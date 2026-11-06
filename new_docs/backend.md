@@ -78,7 +78,29 @@ npm run db:reset
 *   Ajaa kaikki migraatiot.
 *   Ajaa seed-skriptin (`prisma/seed.ts`).
 
+## Testit
+
+Testit ajetaan Jestillä (`npm test` backend-kansiossa). Projekti käyttää ES-moduuleja, joten Jest tarvitsee ESM-tilan — `test`-skripti asettaa `NODE_OPTIONS=--experimental-vm-modules` ja `jest.config.js` käyttää ts-jestin ESM-presettiä.
+
+```bash
+cd backend
+npm test           # kaikki testit
+npm run test:watch # seurantatila kehityksen aikana
+```
+
+Testit sijaitsevat hakemistossa `src/__tests__` ja ne on suljettu pois tuotantokäännöksestä (`tsconfig.json` → `exclude`), joten ne eivät päädy Docker-imageen.
+
+Ensimmäinen testierä kattaa kolme aluetta:
+
+*   **`azureTokenVerifier.test.ts`** — tokenin tarkistuksen hyökkäystestit: algoritmisekaannus, sallitun listan ulkopuolinen algoritmi, `alg: none`, vieras allekirjoitusavain, vanhentunut token, väärä audience, väärä issuer, puuttuva `kid`, Graph-token ja roskadata. JWKS on mockattu, joten testit eivät tarvitse verkkoa.
+*   **`roles.test.ts`** — roolihierarkian oikeusmatriisi kaikille neljälle roolille. Varmistaa erityisesti, ettei SUPPORT (harjoitteleva opiskelija) pääse AI-työkaluihin.
+*   **`ticketTopics.test.ts`** — aihearvonta: vaikeustason suodatus, toiston esto, varapolut ja se ettei katalogi ole painottunut yhteen aihepiiriin.
+
+Testien laatu on varmistettu mutaatiotestauksella: kun verifioijasta poistetaan algoritmirajaus, audience-tarkistus tai issuer-tarkistus yksi kerrallaan, vastaava testi kaatuu joka kerta.
+
 ## Tuotantoon Vienti (Backend)
+
+> **Huom:** tuotantojulkaisun koko prosessi, `deploy.sh`-skriptin valitsimet, rollback, ympäristömuuttujat, nginx-konfiguraatio ja tunnetut sudenkuopat on kuvattu erillisessä dokumentissa [deployment.md](./deployment.md). Alla oleva kuvaa vain backendin kääntämisen ja käynnistämisen.
 
 1.  **Build:** Käännä TypeScript JavaScriptiksi:
     ```bash
@@ -91,11 +113,11 @@ npm run db:reset
     npm start
     ```
     *   Tämä komento ajaa automaattisesti `prisma generate` ja `prisma migrate deploy` ennen palvelimen käynnistämistä.
-    *   Varmista, että tuotantoympäristön `.env`-tiedosto on oikein konfiguroitu (erityisesti `DATABASE_URL`, `JWT_SECRET`, `AZURE_AD_*` ja `ENVIRONMENT=production`).
+    *   Varmista, että tuotantoympäristön `.env`-tiedosto on oikein konfiguroitu (erityisesti `DATABASE_URL`, `JWT_SECRET`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` ja `NODE_ENV=production`). Huomaa, että ympäristön tunnistus tapahtuu `NODE_ENV`-muuttujalla — aiemmin käytössä ollut `ENVIRONMENT` ei ohjaa enää mitään.
 
 ## Azure AD -autentikointi (ID/Access tokenien validointi)
 
-Backend tukee sekä paikallisia JWT:itä (HS256) että Azure AD:n allekirjoittamia RS*-tokeneita. Azure-tokeneissa on kaksi keskeistä versiota, jotka vaikuttavat issuereihin ja allekirjoitusavaimiin (JWKS):
+Backend hyväksyy vain Azure AD:n allekirjoittamia RS*-tokeneita. Paikallisten HS256-tokenien tuki on poistettu: symmetrisen algoritmin salliminen avaisi algoritmisekaannuksen, jossa hyökkääjä allekirjoittaa tokenin julkisella avaimella. Azure-tokeneissa on kaksi keskeistä versiota, jotka vaikuttavat issuereihin ja allekirjoitusavaimiin (JWKS):
 
 - Issuer v2: `https://login.microsoftonline.com/{tenant}/v2.0`
 - Issuer v1: `https://sts.windows.net/{tenant}/`
@@ -105,21 +127,32 @@ Vastaavat JWKS-avaimet sijaitsevat eri discovery-osoitteissa:
 - v2-avaimet: `https://login.microsoftonline.com/{tenant}/discovery/v2.0/keys`
 - v1-avaimet: `https://login.microsoftonline.com/{tenant}/discovery/keys`
 
-Autentikointimiddleware (`src/middleware/authMiddleware.ts`) tunnistaa tokenin issuerin perusteella, käyttää ensisijaisesti oikeaa JWKS-joukkoa (v1 vs v2), ja tekee automaattisen fallbackin vaihtoehtoiseen JWKS-joukkoon, jos allekirjoituksen validointi epäonnistuu ("invalid signature"). Tämä korjaa tuotantoympäristössä esiintyneen virheen, jossa v1-issuerilla (`sts.windows.net/...`) allekirjoitetut tokenit validoitiin vain v2-avaimia vasten.
+Tokenin tarkistus on keskitetty moduuliin `src/middleware/azureTokenVerifier.ts`, jota käyttävät sekä HTTP-pyyntöjen `authMiddleware` että WebSocket-yhteyksien `socketService`. Aiemmin molemmilla oli oma toteutuksensa, ja ne ehtivät ajautua eri tilaan.
+
+Verifioija tunnistaa tokenin issuerin perusteella, käyttää ensisijaisesti oikeaa JWKS-joukkoa (v1 vs v2), ja tekee automaattisen fallbackin vaihtoehtoiseen joukkoon, jos allekirjoituksen validointi epäonnistuu ("invalid signature").
 
 Tärkeää frontendille (MSAL):
 
-- Backend odottaa, että Azure ID-/access tokenin `aud`-claim on oman API-sovelluksen client ID (`AZURE_CLIENT_ID`).
-- Älä lähetä Microsoft Graphin access tokenia backendille (aud: `00000003-0000-0000-c000-000000000000`). Graph-token validoituu nyt allekirjoituksesta oikein, mutta se hylätään yleisön (audience) perusteella turvallisuussyistä.
-- Pyydä tokenit nimenomaan tälle API:lle (Expose an API → scope) ja käytä MSAL:ssa oikeaa scopea (esim. `api://<AZURE_CLIENT_ID>/.default` tai määritelty custom scope).
+- Frontend lähettää **ID-tokenin** (`authService.acquireToken()` → `response.idToken`). Sen `aud`-claim on sovelluksen client ID (`AZURE_CLIENT_ID`) ja `iss` sisältää tenant id:n.
+- Älä lähetä Microsoft Graphin access tokenia backendille (aud: `00000003-0000-0000-c000-000000000000`). Microsoft muokkaa Graph-tokenin allekirjoitusta tarkoituksella, joten mikään muu palvelu ei voi tarkistaa sitä. Verifioija tunnistaa tämän ja palauttaa virhekoodin `GRAPH_TOKEN` selkeällä viestillä.
+- Vaihtoehto ID-tokenille on oma API-scope (Expose an API → scope), jolloin frontend pyytää tokenin nimenomaan tälle API:lle.
 
 Ympäristömuuttujat:
 
-- `AZURE_TENANT_ID` (pakollinen tuotannossa)
-- `AZURE_CLIENT_ID` (pakollinen tuotannossa)
-- Valinnainen: `DEVELOPER_EMAILS` (pilkulla eroteltu lista), joille kehitystarkistukset ovat joustavammat
+- `AZURE_TENANT_ID` (pakollinen) – sama arvo kuin frontendin `VITE_MSAL_TENANT_ID`
+- `AZURE_CLIENT_ID` (pakollinen) – sama arvo kuin frontendin `VITE_MSAL_CLIENT_ID`
+- `AUTH_VERIFY_MODE` (valinnainen): `enforce` (oletus) hylkää kelpaamattomat tokenit, `warn` hyväksyy ne ja lokittaa syyn
 
-Virhetilanteiden diagnostiikka: middleware lokittaa selkeästi issuerin, audin ja käytetyn JWKS-lähteen. Jos saat 401 `Invalid token signature`, kyseessä on yleensä väärä JWKS (korjaantuu fallbackilla) tai väärä tenant. Jos saat 401 `Invalid or expired token` audience-virheen kera, frontend lähettää todennäköisesti Graph-tokenin eikä oman API:n tokenia.
+Jos pakolliset muuttujat puuttuvat, backend lokittaa virheen käynnistyksessä ja vastaa todennettuihin pyyntöihin statuksella 500.
+
+**`AUTH_VERIFY_MODE=warn` on tarkoitettu vain väliaikaiseen diagnosointiin.** Siinä tilassa järjestelmä on käytännössä ilman todennusta, mutta jokaisesta epäonnistuneesta tarkistuksesta lokitetaan tarkka syy (`code`, tokenin `aud` ja `iss`). Käytännön käyttöönotto: ota warn-tila käyttöön, katso lokista mitä oikea liikenne tuottaa, korjaa konfiguraatio ja siirry `enforce`-tilaan.
+
+Virhekoodit: `CONFIG_MISSING`, `MALFORMED`, `GRAPH_TOKEN`, `EXPIRED`, `INVALID_SIGNATURE`, `INVALID_CLAIMS`, `MISSING_USER_INFO`. `INVALID_CLAIMS` sisältää sekä tokenin että odotetut arvot, joten aud/iss-virheen näkee lokista suoraan.
+
+Huomaa myös:
+
+- `optionalAuthMiddleware` EI todenna käyttäjää. Se asettaa vain kentän `req.rateLimitIdentity`, jota käytetään rate limit -avaimena. `req.user` asetetaan vasta tarkistetusta tokenista.
+- `POST /api/auth/login` vaatii tarkistetun tokenin, ja käyttäjän sähköposti ja nimi luetaan tokenista – ei request bodysta.
 
 ## Syötteiden Validointi
 

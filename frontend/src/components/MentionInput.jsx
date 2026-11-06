@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUsers } from '../hooks/useUsers';
+import { isStaff } from '../utils/roles';
 
 const MentionInput = ({ value, onChange, placeholder, onSubmit, disabled }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -62,7 +63,7 @@ const MentionInput = ({ value, onChange, placeholder, onSubmit, disabled }) => {
   const users = React.useMemo(() => {
     if (!allUsers) return [];
     // Only show support and admin users for mentions
-    return allUsers.filter(u => u.role === 'SUPPORT' || u.role === 'ADMIN');
+    return allUsers.filter(u => isStaff(u.role));
   }, [allUsers]);
 
   // Convert structured content to plain text (for form submission)

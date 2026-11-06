@@ -36,6 +36,11 @@ dotenv.config();
 // Luodaan Express-sovellus
 const app = express();
 
+// Sovellus toimii nginx-reverse proxyn takana (yksi hyppy).
+// Ilman tätä req.ip olisi aina 127.0.0.1 ja rate limit koskisi
+// kaikkia käyttäjiä yhteisesti nginxin osoitteen perusteella.
+app.set('trust proxy', 1);
+
 // Create HTTP server
 const httpServer = createServer(app);
 
@@ -107,7 +112,7 @@ const ipLimiter = rateLimit({
   skipFailedRequests: true,
   skip: (req) => {
     // Skip for authenticated users (they use userLimiter instead)
-    if (req.user?.email) return true;
+    if (req.rateLimitIdentity) return true;
     // Skip rate limiting for WebSocket upgrade requests
     if (req.headers.upgrade === 'websocket') return true;
     // Skip for health checks
@@ -130,11 +135,11 @@ const userLimiter = rateLimit({
   keyGenerator: (req) => {
     // Use user email as key for authenticated users
     // Falls back to a placeholder that will never match (skip handles non-auth)
-    return req.user?.email || 'anonymous-never-matches';
+    return req.rateLimitIdentity || "anonymous-never-matches";
   },
   skip: (req) => {
     // Only apply to authenticated users
-    if (!req.user?.email) return true;
+    if (!req.rateLimitIdentity) return true;
     // Skip rate limiting for WebSocket upgrade requests
     if (req.headers.upgrade === 'websocket') return true;
     // Skip for health checks

@@ -2,11 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supportAssistantService } from '../services/supportAssistantService';
 import { useAuth } from '../providers/AuthProvider';
 import toast from 'react-hot-toast';
+import { isStaff } from '../utils/roles';
 
 // Hook for support assistant question
 export const useSupportAssistantQuestion = () => {
   const { userRole } = useAuth();
-  const canUseAssistant = userRole === 'SUPPORT' || userRole === 'ADMIN';
+  const canUseAssistant = isStaff(userRole);
 
   return useMutation({
     mutationFn: async ({ question, ticketContext }) => {
@@ -30,7 +31,7 @@ export const useSupportAssistantQuestion = () => {
 // Hook for support assistant history
 export const useSupportAssistantHistory = (ticketId) => {
   const { userRole } = useAuth();
-  const canViewHistory = userRole === 'SUPPORT' || userRole === 'ADMIN';
+  const canViewHistory = isStaff(userRole);
 
   return useQuery({
     queryKey: ['support-assistant-history', ticketId],
@@ -58,7 +59,7 @@ export const useSupportAssistantHistory = (ticketId) => {
 export const useSupportAssistantFeedback = () => {
   const queryClient = useQueryClient();
   const { userRole } = useAuth();
-  const canProvideFeedback = userRole === 'SUPPORT' || userRole === 'ADMIN';
+  const canProvideFeedback = isStaff(userRole);
 
   return useMutation({
     mutationFn: async ({ interactionId, feedback }) => {
@@ -90,7 +91,7 @@ export const useSupportAssistantFeedback = () => {
 // Note: This returns a function, not a query, because streaming can't use React Query
 export const useSupportAssistantStream = () => {
   const { userRole } = useAuth();
-  const canUseAssistant = userRole === 'SUPPORT' || userRole === 'ADMIN';
+  const canUseAssistant = isStaff(userRole);
 
   const streamQuestion = async (question, ticketContext, onChunk, onComplete, onError) => {
     if (!canUseAssistant) {

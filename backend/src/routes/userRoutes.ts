@@ -5,6 +5,7 @@ import { requireRole } from '../middleware/roleMiddleware.js';
 import { prisma } from '../lib/prisma.js';
 import { getProfilePicture, getProfilePictureByEmail, updateProfilePictureFromMicrosoft } from '../controllers/userController.js';
 import { asyncHandler, AuthenticationError, NotFoundError, ValidationError, AuthorizationError } from '../middleware/errorHandler.js';
+import { STAFF_ROLES } from '../utils/roles.js';
 
 const router = express.Router();
 
@@ -108,8 +109,14 @@ router.put('/:id/role', authMiddleware, requireRole(UserRole.ADMIN), asyncHandle
 
 // Vaihda käyttäjän rooli (vain development-ympäristössä)
 router.put('/role', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
-  // Tarkistetaan että ollaan development-ympäristössä
-  if (process.env.ENVIRONMENT === 'production') {
+  // HUOM: ehto on tarkoituksella "salli vain jos NODE_ENV on nimenomaan
+  // development". Aiempi ehto oli päinvastainen (estä jos ENVIRONMENT ===
+  // 'production'), jolloin puuttuva tai väärin kirjoitettu muuttuja avasi
+  // reitin - ja tämä reitti antaa käyttäjän nostaa oman roolinsa ADMIN-tasolle.
+  //
+  // Luetaan process.env suoraan eikä config/env.js:n kautta, koska siellä
+  // NODE_ENV saa oletusarvon 'development', jos muuttujaa ei ole asetettu.
+  if (process.env.NODE_ENV !== 'development') {
     throw new AuthorizationError('Role switching is only available in development environment');
   }
 
@@ -143,12 +150,9 @@ router.get('/support', authMiddleware, requireRole([UserRole.SUPPORT, UserRole.A
     const users = await prisma.user.findMany({
       where: {
         AND: [
-          {
-            OR: [
-              { role: UserRole.SUPPORT },
-              { role: UserRole.ADMIN }
-            ]
-          },
+          // Kaikki tukihenkilötason roolit, myös TEACHER, jotta tiketin voi
+          // osoittaa opettajalle ja hän näkyy tukihenkilölistoissa
+          { role: { in: STAFF_ROLES } },
           { isDiscordUser: false } // Exclude Discord users
         ]
       },
@@ -168,7 +172,11 @@ router.get('/support', authMiddleware, requireRole([UserRole.SUPPORT, UserRole.A
 
 // Profile picture routes - using Microsoft Graph API
 router.post('/profile-picture/microsoft', authMiddleware, updateProfilePictureFromMicrosoft);
-router.get('/profile-picture/:userId', getProfilePicture);
-router.get('/profile-picture/by-email/:email', getProfilePictureByEmail);
+// Nämä olivat aiemmin ilman todennusta. Erityisesti by-email paljasti
+// kenelle tahansa, onko annettu sähköpostiosoite järjestelmässä.
+// Frontend lähettää näihin jo tokenin (userService.js), joten muutos ei
+// riko kuvien näyttämistä.
+router.get('/profile-picture/:userId', authMiddleware, getProfilePicture);
+router.get('/profile-picture/by-email/:email', authMiddleware, getProfilePictureByEmail);
 
 export default router; 

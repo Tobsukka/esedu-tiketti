@@ -10,6 +10,7 @@ import { prisma } from '../lib/prisma.js';
 import { successResponse, errorResponse, paginatedResponse, parsePaginationParams, createPaginationMeta, errorResponses } from '../utils/apiResponse.js';
 import { asyncHandler, NotFoundError, ValidationError, AuthorizationError } from '../middleware/errorHandler.js';
 import { sendMessageToDiscord, sendStatusUpdateToDiscord } from '../discord/messageSync.js';
+import { isStaff } from '../utils/roles.js';
 
 export const ticketController = {
   // Haetaan kaikki tiketit, jos suodattimia määritelty, niin haetaan niiden mukaan
@@ -538,7 +539,7 @@ export const ticketController = {
         // If so, prepare to trigger an AI response as the ticket creator
         if (
           ticketDetails?.isAiGenerated &&
-          (user.role === 'SUPPORT' || user.role === 'ADMIN') &&
+          isStaff(user.role) &&
           user.id !== ticketDetails.createdById
         ) {
           aiGenerationNeeded = true;
@@ -722,7 +723,7 @@ export const ticketController = {
       }
       
       // Tarkista käyttöoikeudet:
-      if (user.role !== 'SUPPORT' && user.role !== 'ADMIN' && ticket.createdById !== user.id) {
+      if (!isStaff(user.role) && ticket.createdById !== user.id) {
         return res.status(403).json({ error: 'Vain tukihenkilöt, järjestelmänvalvojat tai tiketin luoja voivat lisätä mediasisältöä' });
       }
       
@@ -1130,7 +1131,7 @@ export const ticketController = {
       if (status === TicketStatus.IN_PROGRESS && 
           (ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED)) {
         // Jos tiketti avataan uudelleen, tukihenkilö tai admin voi tehdä sen
-        if (user.role !== UserRole.SUPPORT && user.role !== UserRole.ADMIN) {
+        if (!isStaff(user.role)) {
           return res.status(403).json({ 
             error: 'Only support personnel or admin can reopen tickets'
           });
@@ -1276,7 +1277,7 @@ export const ticketController = {
         return res.status(404).json({ error: 'Target user not found' });
       }
 
-      if (targetUser.role !== UserRole.SUPPORT && targetUser.role !== UserRole.ADMIN) {
+      if (!isStaff(targetUser.role)) {
         return res.status(400).json({ error: 'Target user must be a support person or admin' });
       }
 

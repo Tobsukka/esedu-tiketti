@@ -3,6 +3,7 @@ import { Alert } from '../ui/Alert';
 import { useUsers } from '../../hooks/useUsers';
 import { useUpdateUserRole } from '../../hooks/useRoleChange';
 import { Search, RefreshCw, MessageSquare } from 'lucide-react';
+import { getRoleText, ASSIGNABLE_ROLES } from '../../utils/roles';
 
 export default function UserManagementDialog({ isOpen, onClose }) {
   const { data: fetchedUsers, isLoading, error: fetchError, refetch } = useUsers();
@@ -24,12 +25,10 @@ export default function UserManagementDialog({ isOpen, onClose }) {
     refetch();
   };
 
-  const handleRoleChange = (userId, isSupport) => {
+  const handleRoleChange = (userId, newRole) => {
     setModifiedUsers((prevUsers) =>
       prevUsers.map((user) =>
-        user.id === userId
-          ? { ...user, role: isSupport ? 'SUPPORT' : 'USER' }
-          : user,
+        user.id === userId ? { ...user, role: newRole } : user,
       ),
     );
   };
@@ -69,18 +68,7 @@ export default function UserManagementDialog({ isOpen, onClose }) {
     setSearchQuery(e.target.value);
   };
 
-  const getRoleText = (role) => {
-    switch (role) {
-      case 'ADMIN':
-        return 'Admin';
-      case 'SUPPORT':
-        return 'Tukihenkilö';
-      case 'USER':
-        return 'Opiskelija';
-      default:
-        return role;
-    }
-  };
+  // Roolien näyttönimet tulevat jaetusta utils/roles-moduulista
 
   // Small badge component for jobTitle
   const JobTitleBadge = ({ jobTitle }) => {
@@ -215,18 +203,24 @@ export default function UserManagementDialog({ isOpen, onClose }) {
                         <td className="py-3">{user.email}</td>
                         <td className="py-3 text-center">
                           <div className="flex items-center justify-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={user.role === 'SUPPORT'}
+                            <select
+                              value={user.role}
                               onChange={(e) =>
-                                handleRoleChange(user.id, e.target.checked)
+                                handleRoleChange(user.id, e.target.value)
                               }
                               disabled={user.role === 'ADMIN' || saving}
-                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <span className="inline-block min-w-[100px] text-sm text-gray-500">
-                              ({getRoleText(user.role)})
-                            </span>
+                              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400"
+                            >
+                              {user.role === 'ADMIN' ? (
+                                <option value="ADMIN">{getRoleText('ADMIN')}</option>
+                              ) : (
+                                ASSIGNABLE_ROLES.map((role) => (
+                                  <option key={role} value={role}>
+                                    {getRoleText(role)}
+                                  </option>
+                                ))
+                              )}
+                            </select>
                           </div>
                         </td>
                       </tr>
@@ -254,19 +248,23 @@ export default function UserManagementDialog({ isOpen, onClose }) {
                     </div>
                     <div className="text-sm text-gray-600 mb-2">{user.email}</div>
                     <div className="flex items-center mt-2">
-                      <span className="text-sm mr-2">Tukihenkilö:</span>
-                      <input
-                        type="checkbox"
-                        checked={user.role === 'SUPPORT'}
-                        onChange={(e) =>
-                          handleRoleChange(user.id, e.target.checked)
-                        }
+                      <span className="text-sm mr-2">Rooli:</span>
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
                         disabled={user.role === 'ADMIN' || saving}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <span className="inline-block ml-2 text-sm text-gray-500">
-                        ({getRoleText(user.role)})
-                      </span>
+                        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        {user.role === 'ADMIN' ? (
+                          <option value="ADMIN">{getRoleText('ADMIN')}</option>
+                        ) : (
+                          ASSIGNABLE_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {getRoleText(role)}
+                            </option>
+                          ))
+                        )}
+                      </select>
                     </div>
                   </div>
                 ))
