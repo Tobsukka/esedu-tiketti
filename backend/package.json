@@ -1,7 +1,7 @@
 {
   "name": "tiketti-backend",
   "version": "1.0.0",
-  "description": "Tikettij\u00e4rjestelm\u00e4n backend",
+  "description": "Tikettijärjestelmän backend",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -73,7 +73,7 @@
     "socket.io": "^4.8.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2",
-    "uuid": "^11.0.5",
+    "uuid": "^11.1.1",
     "winston": "^3.17.0",
     "zod": "^3.24.2",
     "zod-to-json-schema": "^3.24.6"
