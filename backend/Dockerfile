@@ -39,7 +39,7 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /usr/src/app
 # Application files stay root-owned (read-only for the app user);
-# only the uploads directory needs to be writable at runtime.
+# only uploads/ and logs/ need to be writable at runtime.
 # Copy production node_modules from deps stage
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 # Copy prisma directory from deps stage (contains generated client)
@@ -50,7 +50,8 @@ COPY --from=builder /usr/src/app/dist ./dist
 COPY package.json .
 # uploads/ is bind-mounted in docker-compose; on the host it must be
 # writable by uid 1000 (node), e.g. `sudo chown -R 1000:1000 backend/uploads`
-RUN mkdir -p uploads && chown node:node uploads
+# logs/ is used by the winston file transport when NODE_ENV=production
+RUN mkdir -p uploads logs && chown node:node uploads logs
 
 # Run as the unprivileged built-in "node" user (uid 1000)
 USER node
