@@ -3,7 +3,7 @@
 # ---- Base ----
 # Use an official Node.js runtime as a parent image
 # Choose a version compatible with your project (e.g., based on package.json or @types/node)
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 WORKDIR /usr/src/app
 
 # ---- Dependencies ----
@@ -17,7 +17,7 @@ COPY prisma ./prisma/
 # Install ALL dependencies (including devDependencies) to run postinstall scripts
 RUN npm ci
 # Prune devDependencies after installation and postinstall hook
-RUN npm prune --production
+RUN npm prune --omit=dev
 # --- Prisma Client should be generated at this point by postinstall ---
 
 # ---- Builder ----
@@ -38,6 +38,8 @@ RUN npm run build
 # Final stage/image
 FROM base AS runner
 WORKDIR /usr/src/app
+# Application files stay root-owned (read-only for the app user);
+# only the uploads directory needs to be writable at runtime.
 # Copy production node_modules from deps stage
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 # Copy prisma directory from deps stage (contains generated client)
@@ -46,6 +48,12 @@ COPY --from=deps /usr/src/app/prisma ./prisma
 COPY --from=builder /usr/src/app/dist ./dist
 # Copy package.json (needed for running scripts like migrate)
 COPY package.json .
+# uploads/ is bind-mounted in docker-compose; on the host it must be
+# writable by uid 1000 (node), e.g. `sudo chown -R 1000:1000 backend/uploads`
+RUN mkdir -p uploads && chown node:node uploads
+
+# Run as the unprivileged built-in "node" user (uid 1000)
+USER node
 
 # Expose the port the app runs on (adjust if different)
 EXPOSE 3001
